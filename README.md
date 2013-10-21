@@ -25,7 +25,7 @@ And it will print to standard output the scaffolded API.
     ````
     npm install mongoose
     ````
-- Write a small express application and name it app.'s:
+- Write a small express application and name it app.js:
 
 ````javascript
 var express = require("express"),
