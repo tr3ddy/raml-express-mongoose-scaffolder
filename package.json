@@ -1,0 +1,12 @@
+{
+  "name": "raml-express-mongoose-scaffolder",
+  "description": "a demo REST API scaffolder using RAML + Express + Mongoose",
+  "version": "0.0.1",
+  "dependencies": {
+    "inflection": "~1.2.6",
+    "xmlhttprequest": "~1.6.0",
+    "uritemplate": "~0.3.4",
+    "optimist": "~0.6.0",
+    "q": "~0.9.7"
+  }
+}
