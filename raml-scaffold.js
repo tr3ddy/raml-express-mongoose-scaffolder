@@ -1,6 +1,7 @@
 "use strict";
 var parser = require('./parser/raml.js');
 var inflection = require('inflection');
+var Handlebars = require('handlebars');
 
 var parameters =  require('optimist')
     .usage('Usage: $0 raml-spec-file-name.yml')
@@ -188,45 +189,48 @@ function isJsonSchemaNumber(type) {
 
 function composeGet(uri, collectionName){
   var filter = getFilterFromUri(uri);
-  return ["  app.get('" + uri +"', function (req, res){",
-          "    return " + collectionName + "Model.find(" + filter + "function (err, items) {",
-          "      if (!err) {",
-          "        return res.send(items);",
-          "      } else {",
-          "        return console.log(err);",
-          "      }",
-          "    });",
-          "  });"].join("\n");
+  var source =  ["  app.get('{{uri}}', function (req, res){",
+                  "    return {{collectionName}}Model.find({{filter}}function (err, items) {",
+                  "      if (!err) {",
+                  "        return res.send(items);",
+                  "      } else {",
+                  "        return console.log(err);",
+                  "      }",
+                  "    });",
+                  "  });"].join("\n");
+  var data = { "uri": uri, "filter": filter, "collectionName": collectionName};
+  var template = Handlebars.compile(source);
+  return template(data);
 }
 
 function composeDelete(uri, collectionName) {
   var filter = getFilterFromUri(uri);
-  return ["  app.delete('" + uri + "', function (req, res){",
-          "        return " + collectionName + "Model.findOne(" + filter +  " function (err, item) {",
-          "            return item.remove(function (err) {",
-          "                if (!err) {",
-          "                    console.log('removed');",
-          "                    return res.send('');",
-          "                } else {",
-          "                    console.log(err);",
-          "                }",
-          "            });",
-          "        });",
-          "  });"].join("\n");
+  var source = ["  app.delete('{{uri}}', function (req, res){",
+                  "        return {{collectionName}}Model.findOne({{filter}} function (err, item) {",
+                  "            return item.remove(function (err) {",
+                  "                if (!err) {",
+                  "                    console.log('removed');",
+                  "                    return res.send('');",
+                  "                } else {",
+                  "                    console.log(err);",
+                  "                }",
+                  "            });",
+                  "        });",
+                  "  });"].join("\n");
+  var data = { "uri": uri, "filter": filter, "collectionName": collectionName};
+  var template = Handlebars.compile(source);
+  return template(data);
 }
 
 function composePost(uri, collectionName, schema) {
-    var schemaDescription = "";
-    Object.keys(schema).forEach(function(schemaItemName){
-        schemaDescription += "        " + schemaItemName + ": req.body." +schemaItemName+ ",\n";
-    });
+    var schemaDescription = getSchemaForObject(schema);
     schemaDescription = schemaDescription.replace(/,\s*\n*\s*$/, "");
 
-    return ["  app.post('" + uri + "', function (req, res){",
+    var source =  ["  app.post('{{uri}}', function (req, res){",
             "    var item;",
             "    console.log(req.body);",
-            "    item = new "+ collectionName +"Model({",
-            schemaDescription,
+            "    item = new {{collectionName}}Model({",
+            "{{schemaDescription}}",
             "    });",
             "    item.save(function (err) {",
             "        if (!err) {",
@@ -237,28 +241,46 @@ function composePost(uri, collectionName, schema) {
             "    });",
             "    return res.send(item);",
             "  });"].join("\n");
+    var data = { "uri": uri, "schemaDescription": schemaDescription, "collectionName": collectionName};
+    var template = Handlebars.compile(source);
+    return template(data);
 }
 
 function composePut(uri, collectionName, schema) {
     var filter = getFilterFromUri(uri);
-    var schemaDescription = "";
-    Object.keys(schema).forEach(function(schemaItemName){
-        schemaDescription += "        item." + schemaItemName + "= req.body." +schemaItemName+ ";\n";
-    });
+    var schemaDescription = getSchemaForJs(schema);
 
-    return ["  app.put('" + uri + "', function (req, res){",
-            "    return " + collectionName + "Model.findOne(" + filter + " req.params.id, function (err, item) {",
-            schemaDescription,
-            "        return item.save(function (err) {",
-            "            if (!err) {",
-            "                console.log('updated');",
-            "            } else {",
-            "                console.log(err);",
-            "            }",
-            "            return res.send(product);",
-            "        });",
-            "    });",
-            "  });"].join("\n");
+    var source = ["  app.put('{{uri}}', function (req, res){",
+        "    return {{collectionName}}Model.findOne({{filter}} req.params.id, function (err, item) {",
+        "{{schemaDescription}}",
+        "        return item.save(function (err) {",
+        "            if (!err) {",
+        "                console.log('updated');",
+        "            } else {",
+        "                console.log(err);",
+        "            }",
+        "            return res.send(product);",
+        "        });",
+        "    });",
+        "  });"].join("\n");
+
+    var data = { "uri": uri, "filter": filter, "schemaDescription": schemaDescription, "collectionName": collectionName};
+    var template = Handlebars.compile(source);
+    return template(data);
+}
+
+function getSchemaForJs(schema) {
+    var source = "{{#items}}        item.{{this}} = req.body.{{this}};\n{{/items}}";
+    var data = { "items": Object.keys(schema)};
+    var template = Handlebars.compile(source);
+    return template(data);
+}
+
+function getSchemaForObject(schema) {
+    var source = "{{#items}}        {{this}}: req.body.{{this}},\n{{/items}}";
+    var data = { "items": Object.keys(schema)};
+    var template = Handlebars.compile(source);
+    return template(data);
 }
 
 function getFilterFromUri(uri) {
@@ -271,8 +293,10 @@ function getFilterFromUri(uri) {
     }
 
     if (parameterName) {
-        filter = " { " + parameterName + ": req.params." + parameterName + " }, ";
+        filter = " { {{parameterName}}: req.params.{{parameterName}} }, ";
     }
 
-    return filter;
+    var data = { "parameterName": parameterName};
+    var template = Handlebars.compile(filter);
+    return template(data);
 }
