@@ -1,5 +1,5 @@
 "use strict";
-var parser = require('./parser/raml.js');
+var parser = require('raml-parser');
 var inflection = require('inflection');
 var Handlebars = require('handlebars');
 
