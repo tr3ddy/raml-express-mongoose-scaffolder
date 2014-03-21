@@ -86,8 +86,8 @@ function emitMethodsForResource(absoluteUri, method, pathSegments) {
 //  var requestHeaders = [];
 //  var responseHeaders = [];
 //  var queryParameters = [];
-//  var requestSchema;
-//  var requestSchemaDefinition;
+ var requestSchema;
+ var requestSchemaDefinition;
 
   var composeHandlers = {
     get: composeGet,
@@ -110,17 +110,19 @@ function emitMethodsForResource(absoluteUri, method, pathSegments) {
 //      if (successResponse.headers)  {
 //        responseHeaders = returnNamedParametersArray(successResponse.headers);
 //      }
-      if (successResponse.body) {
-        // Try to match a json response
-        responseContentTypes = Object.keys(successResponse.body).filter(function(element){return element.match(/json$/)});
-        responseContentType = responseContentTypes.length ? responseContentTypes[0] : null;
-        if (responseContentType) {
-          responseSchema = successResponse.body[responseContentType].schema;
-          if (responseSchema) {
-            responseSchemaDefinition = JSON.parse(responseSchema);
-            mongooseSchema = getMongooseSchemaFromJsonSchema(responseSchemaDefinition)
+      if(successResponse){
+        if (successResponse.body) {
+          // Try to match a json response
+          responseContentTypes = Object.keys(successResponse.body).filter(function(element){return element.match(/json$/)});
+          responseContentType = responseContentTypes.length ? responseContentTypes[0] : null;
+          if (responseContentType) {
+            responseSchema = successResponse.body[responseContentType].schema;
+            if (responseSchema) {
+              responseSchemaDefinition = JSON.parse(responseSchema);
+              mongooseSchema = getMongooseSchemaFromJsonSchema(responseSchemaDefinition)
+            }
           }
-        }
+        }   
       }
     }
   }
@@ -130,10 +132,12 @@ function emitMethodsForResource(absoluteUri, method, pathSegments) {
       requestContentTypes = Object.keys(method.body).filter(function(element){return element.match(/json$/)});
       requestContentType = requestContentTypes.length ? requestContentTypes[0] : null;
       if (requestContentType) {
-//        requestSchema = method.body[requestContentType].schema;
-//        if (requestSchema) {
-//          requestSchemaDefinition = JSON.parse(requestSchema);
-//        }
+       requestSchema = method.body[requestContentType].schema;
+       var xxx=1;
+       if (requestSchema) {
+         requestSchemaDefinition = JSON.parse(requestSchema);
+         mongooseSchema = getMongooseSchemaFromJsonSchema(requestSchemaDefinition);
+       }
       }
     }
   }
